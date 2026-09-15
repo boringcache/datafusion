@@ -14,7 +14,7 @@ tag = "datafusion-issue-25148-cargo-v2-git-db"
 
 [entries.cargo-target]
 kind = "cargo-target"
-tag = "datafusion-issue-25148-cargo-v3-target"
+tag = "datafusion-issue-25148-cargo-v4-target"
 
 [profiles.cargo]
 entries = ["cargo-registry-cache", "cargo-registry-index", "cargo-git-db", "cargo-target"]
