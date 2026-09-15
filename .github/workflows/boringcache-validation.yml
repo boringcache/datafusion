@@ -45,33 +45,21 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/boringcache-validation"
           source_commit=$(cat .github/boringcache-source)
-          git diff --exit-code "$source_commit" -- . ':!.boringcache.toml' ':!.github/boringcache-source' ':!.github/boringcache-validation.md' ':!.github/workflows/boringcache-connect.yml' ':!.github/workflows/boringcache-validation.yml'
+          git diff --exit-code "$source_commit" -- . ':!.boringcache.toml' ':!.github/boringcache-plans/**' ':!.github/boringcache-source' ':!.github/boringcache-validation.md' ':!.github/workflows/boringcache-connect.yml' ':!.github/workflows/boringcache-validation.yml'
           git rev-parse HEAD > "$RUNNER_TEMP/boringcache-validation/workflow-commit.txt"
           cp .github/boringcache-source "$RUNNER_TEMP/boringcache-validation/upstream-commit.txt"
           cp .boringcache.toml "$RUNNER_TEMP/boringcache-validation/cache-plan.toml"
           rustc -Vv > "$RUNNER_TEMP/boringcache-validation/rustc.txt"
           cargo -V > "$RUNNER_TEMP/boringcache-validation/cargo.txt"
           sha256sum Cargo.lock > "$RUNNER_TEMP/boringcache-validation/cargo-lock.sha256"
-      - name: Install sccache
-        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
-        with:
-          version: v0.17.0
-          disable_annotations: true
-      - name: Configure shared compiler cache
-        id: compiler-cache
+      - name: Publish the workspace Cargo check
+        id: cargo-cache
         uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
         with:
-          mode: sccache
+          mode: cargo
           trust-policy: publish
           diagnostics: summary
           fail-on-cache-error: true
-      - name: Check workspace
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
-        run: cargo xtask ci step check workspace
-      - name: Record compiler cache statistics
-        if: always()
-        run: sccache --show-stats --stats-format=json > "$RUNNER_TEMP/boringcache-validation/sccache.json"
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -79,7 +67,7 @@ jobs:
           name: datafusion-seed
           path: |
             ${{ runner.temp }}/boringcache-validation
-            ${{ steps.compiler-cache.outputs.evidence-path }}
+            ${{ steps.cargo-cache.outputs.evidence-path }}
           if-no-files-found: error
           retention-days: 30
 
@@ -107,39 +95,28 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/boringcache-validation"
           source_commit=$(cat .github/boringcache-source)
-          git diff --exit-code "$source_commit" -- . ':!.boringcache.toml' ':!.github/boringcache-source' ':!.github/boringcache-validation.md' ':!.github/workflows/boringcache-connect.yml' ':!.github/workflows/boringcache-validation.yml'
+          git diff --exit-code "$source_commit" -- . ':!.boringcache.toml' ':!.github/boringcache-plans/**' ':!.github/boringcache-source' ':!.github/boringcache-validation.md' ':!.github/workflows/boringcache-connect.yml' ':!.github/workflows/boringcache-validation.yml'
           git rev-parse HEAD > "$RUNNER_TEMP/boringcache-validation/workflow-commit.txt"
           cp .github/boringcache-source "$RUNNER_TEMP/boringcache-validation/upstream-commit.txt"
-          cp .boringcache.toml "$RUNNER_TEMP/boringcache-validation/cache-plan.toml"
+          cp .github/boringcache-plans/datafusion-common/.boringcache.toml "$RUNNER_TEMP/boringcache-validation/cache-plan.toml"
           rustc -Vv > "$RUNNER_TEMP/boringcache-validation/rustc.txt"
           cargo -V > "$RUNNER_TEMP/boringcache-validation/cargo.txt"
           sha256sum Cargo.lock > "$RUNNER_TEMP/boringcache-validation/cargo-lock.sha256"
-      - name: Install sccache
-        if: inputs.phase == 'restore'
-        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
-        with:
-          version: v0.17.0
-          disable_annotations: true
-      - name: Configure shared compiler cache
-        id: compiler-cache
+      - name: Check datafusion-common (default features)
+        if: inputs.phase == 'baseline'
+        run: cargo xtask ci step check datafusion-common default
+      - name: Restore Cargo state and check datafusion-common (default features)
+        id: cargo-cache
         if: inputs.phase == 'restore'
         uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
         with:
-          mode: sccache
+          mode: cargo
+          working-directory: .github/boringcache-plans/datafusion-common
           trust-policy: restore
           diagnostics: summary
           fail-on-cache-error: true
-      - name: Check datafusion-common (default features)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
-        run: cargo xtask ci step check datafusion-common default
       - name: Check datafusion-common (no-default-features)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion-common no-default
-      - name: Record compiler cache statistics
-        if: always() && inputs.phase == 'restore'
-        run: sccache --show-stats --stats-format=json > "$RUNNER_TEMP/boringcache-validation/sccache.json"
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -147,7 +124,7 @@ jobs:
           name: datafusion-common-${{ inputs.phase }}
           path: |
             ${{ runner.temp }}/boringcache-validation
-            ${{ steps.compiler-cache.outputs.evidence-path }}
+            ${{ steps.cargo-cache.outputs.evidence-path }}
           if-no-files-found: error
           retention-days: 30
 
@@ -175,49 +152,34 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/boringcache-validation"
           source_commit=$(cat .github/boringcache-source)
-          git diff --exit-code "$source_commit" -- . ':!.boringcache.toml' ':!.github/boringcache-source' ':!.github/boringcache-validation.md' ':!.github/workflows/boringcache-connect.yml' ':!.github/workflows/boringcache-validation.yml'
+          git diff --exit-code "$source_commit" -- . ':!.boringcache.toml' ':!.github/boringcache-plans/**' ':!.github/boringcache-source' ':!.github/boringcache-validation.md' ':!.github/workflows/boringcache-connect.yml' ':!.github/workflows/boringcache-validation.yml'
           git rev-parse HEAD > "$RUNNER_TEMP/boringcache-validation/workflow-commit.txt"
           cp .github/boringcache-source "$RUNNER_TEMP/boringcache-validation/upstream-commit.txt"
-          cp .boringcache.toml "$RUNNER_TEMP/boringcache-validation/cache-plan.toml"
+          cp .github/boringcache-plans/datafusion-substrait/.boringcache.toml "$RUNNER_TEMP/boringcache-validation/cache-plan.toml"
           rustc -Vv > "$RUNNER_TEMP/boringcache-validation/rustc.txt"
           cargo -V > "$RUNNER_TEMP/boringcache-validation/cargo.txt"
           sha256sum Cargo.lock > "$RUNNER_TEMP/boringcache-validation/cargo-lock.sha256"
-      - name: Install sccache
-        if: inputs.phase == 'restore'
-        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
-        with:
-          version: v0.17.0
-          disable_annotations: true
-      - name: Configure shared compiler cache
-        id: compiler-cache
+      - name: Check datafusion-substrait (default features)
+        if: inputs.phase == 'baseline'
+        run: cargo xtask ci step check datafusion-substrait default
+      - name: Restore Cargo state and check datafusion-substrait (default features)
+        id: cargo-cache
         if: inputs.phase == 'restore'
         uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
         with:
-          mode: sccache
+          mode: cargo
+          working-directory: .github/boringcache-plans/datafusion-substrait
           trust-policy: restore
           diagnostics: summary
           fail-on-cache-error: true
-      - name: Check datafusion-substrait (default features)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
-        run: cargo xtask ci step check datafusion-substrait default
       - name: Check datafusion-substrait (no-default-features)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion-substrait no-default
       - name: Check datafusion-substrait (physical)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion-substrait physical
       - name: Install cmake
         run: apt-get install -y cmake
       - name: Check datafusion-substrait (protoc)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion-substrait protoc
-      - name: Record compiler cache statistics
-        if: always() && inputs.phase == 'restore'
-        run: sccache --show-stats --stats-format=json > "$RUNNER_TEMP/boringcache-validation/sccache.json"
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -225,7 +187,7 @@ jobs:
           name: datafusion-substrait-${{ inputs.phase }}
           path: |
             ${{ runner.temp }}/boringcache-validation
-            ${{ steps.compiler-cache.outputs.evidence-path }}
+            ${{ steps.cargo-cache.outputs.evidence-path }}
           if-no-files-found: error
           retention-days: 30
 
@@ -254,51 +216,34 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/boringcache-validation"
           source_commit=$(cat .github/boringcache-source)
-          git diff --exit-code "$source_commit" -- . ':!.boringcache.toml' ':!.github/boringcache-source' ':!.github/boringcache-validation.md' ':!.github/workflows/boringcache-connect.yml' ':!.github/workflows/boringcache-validation.yml'
+          git diff --exit-code "$source_commit" -- . ':!.boringcache.toml' ':!.github/boringcache-plans/**' ':!.github/boringcache-source' ':!.github/boringcache-validation.md' ':!.github/workflows/boringcache-connect.yml' ':!.github/workflows/boringcache-validation.yml'
           git rev-parse HEAD > "$RUNNER_TEMP/boringcache-validation/workflow-commit.txt"
           cp .github/boringcache-source "$RUNNER_TEMP/boringcache-validation/upstream-commit.txt"
-          cp .boringcache.toml "$RUNNER_TEMP/boringcache-validation/cache-plan.toml"
+          cp .github/boringcache-plans/datafusion-proto/.boringcache.toml "$RUNNER_TEMP/boringcache-validation/cache-plan.toml"
           rustc -Vv > "$RUNNER_TEMP/boringcache-validation/rustc.txt"
           cargo -V > "$RUNNER_TEMP/boringcache-validation/cargo.txt"
           sha256sum Cargo.lock > "$RUNNER_TEMP/boringcache-validation/cargo-lock.sha256"
-      - name: Install sccache
-        if: inputs.phase == 'restore'
-        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
-        with:
-          version: v0.17.0
-          disable_annotations: true
-      - name: Configure shared compiler cache
-        id: compiler-cache
+      - name: Check datafusion-proto (default features)
+        if: inputs.phase == 'baseline'
+        run: cargo xtask ci step check datafusion-proto default
+      - name: Restore Cargo state and check datafusion-proto (default features)
+        id: cargo-cache
         if: inputs.phase == 'restore'
         uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
         with:
-          mode: sccache
+          mode: cargo
+          working-directory: .github/boringcache-plans/datafusion-proto
           trust-policy: restore
           diagnostics: summary
           fail-on-cache-error: true
-      - name: Check datafusion-proto (default features)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
-        run: cargo xtask ci step check datafusion-proto default
       - name: Check datafusion-proto (no-default-features)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion-proto no-default
       - name: Check datafusion-proto (json)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion-proto json
       - name: Check datafusion-proto (parquet)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion-proto parquet
       - name: Check datafusion-proto (avro)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion-proto avro
-      - name: Record compiler cache statistics
-        if: always() && inputs.phase == 'restore'
-        run: sccache --show-stats --stats-format=json > "$RUNNER_TEMP/boringcache-validation/sccache.json"
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -306,7 +251,7 @@ jobs:
           name: datafusion-proto-${{ inputs.phase }}
           path: |
             ${{ runner.temp }}/boringcache-validation
-            ${{ steps.compiler-cache.outputs.evidence-path }}
+            ${{ steps.cargo-cache.outputs.evidence-path }}
           if-no-files-found: error
           retention-days: 30
 
@@ -335,35 +280,26 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/boringcache-validation"
           source_commit=$(cat .github/boringcache-source)
-          git diff --exit-code "$source_commit" -- . ':!.boringcache.toml' ':!.github/boringcache-source' ':!.github/boringcache-validation.md' ':!.github/workflows/boringcache-connect.yml' ':!.github/workflows/boringcache-validation.yml'
+          git diff --exit-code "$source_commit" -- . ':!.boringcache.toml' ':!.github/boringcache-plans/**' ':!.github/boringcache-source' ':!.github/boringcache-validation.md' ':!.github/workflows/boringcache-connect.yml' ':!.github/workflows/boringcache-validation.yml'
           git rev-parse HEAD > "$RUNNER_TEMP/boringcache-validation/workflow-commit.txt"
           cp .github/boringcache-source "$RUNNER_TEMP/boringcache-validation/upstream-commit.txt"
-          cp .boringcache.toml "$RUNNER_TEMP/boringcache-validation/cache-plan.toml"
+          cp .github/boringcache-plans/datafusion-ffi/.boringcache.toml "$RUNNER_TEMP/boringcache-validation/cache-plan.toml"
           rustc -Vv > "$RUNNER_TEMP/boringcache-validation/rustc.txt"
           cargo -V > "$RUNNER_TEMP/boringcache-validation/cargo.txt"
           sha256sum Cargo.lock > "$RUNNER_TEMP/boringcache-validation/cargo-lock.sha256"
-      - name: Install sccache
-        if: inputs.phase == 'restore'
-        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
-        with:
-          version: v0.17.0
-          disable_annotations: true
-      - name: Configure shared compiler cache
-        id: compiler-cache
+      - name: Check datafusion-ffi (no-default-features)
+        if: inputs.phase == 'baseline'
+        run: cargo xtask ci step check datafusion-ffi no-default
+      - name: Restore Cargo state and check datafusion-ffi (no-default-features)
+        id: cargo-cache
         if: inputs.phase == 'restore'
         uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
         with:
-          mode: sccache
+          mode: cargo
+          working-directory: .github/boringcache-plans/datafusion-ffi
           trust-policy: restore
           diagnostics: summary
           fail-on-cache-error: true
-      - name: Check datafusion-ffi (no-default-features)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
-        run: cargo xtask ci step check datafusion-ffi no-default
-      - name: Record compiler cache statistics
-        if: always() && inputs.phase == 'restore'
-        run: sccache --show-stats --stats-format=json > "$RUNNER_TEMP/boringcache-validation/sccache.json"
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -371,7 +307,7 @@ jobs:
           name: datafusion-ffi-${{ inputs.phase }}
           path: |
             ${{ runner.temp }}/boringcache-validation
-            ${{ steps.compiler-cache.outputs.evidence-path }}
+            ${{ steps.cargo-cache.outputs.evidence-path }}
           if-no-files-found: error
           retention-days: 30
 
@@ -400,111 +336,64 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/boringcache-validation"
           source_commit=$(cat .github/boringcache-source)
-          git diff --exit-code "$source_commit" -- . ':!.boringcache.toml' ':!.github/boringcache-source' ':!.github/boringcache-validation.md' ':!.github/workflows/boringcache-connect.yml' ':!.github/workflows/boringcache-validation.yml'
+          git diff --exit-code "$source_commit" -- . ':!.boringcache.toml' ':!.github/boringcache-plans/**' ':!.github/boringcache-source' ':!.github/boringcache-validation.md' ':!.github/workflows/boringcache-connect.yml' ':!.github/workflows/boringcache-validation.yml'
           git rev-parse HEAD > "$RUNNER_TEMP/boringcache-validation/workflow-commit.txt"
           cp .github/boringcache-source "$RUNNER_TEMP/boringcache-validation/upstream-commit.txt"
-          cp .boringcache.toml "$RUNNER_TEMP/boringcache-validation/cache-plan.toml"
+          cp .github/boringcache-plans/datafusion/.boringcache.toml "$RUNNER_TEMP/boringcache-validation/cache-plan.toml"
           rustc -Vv > "$RUNNER_TEMP/boringcache-validation/rustc.txt"
           cargo -V > "$RUNNER_TEMP/boringcache-validation/cargo.txt"
           sha256sum Cargo.lock > "$RUNNER_TEMP/boringcache-validation/cargo-lock.sha256"
-      - name: Install sccache
-        if: inputs.phase == 'restore'
-        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
-        with:
-          version: v0.17.0
-          disable_annotations: true
-      - name: Configure shared compiler cache
-        id: compiler-cache
+      - name: Check datafusion (default features)
+        if: inputs.phase == 'baseline'
+        run: cargo xtask ci step check datafusion default
+      - name: Restore Cargo state and check datafusion (default features)
+        id: cargo-cache
         if: inputs.phase == 'restore'
         uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
         with:
-          mode: sccache
+          mode: cargo
+          working-directory: .github/boringcache-plans/datafusion
           trust-policy: restore
           diagnostics: summary
           fail-on-cache-error: true
-      - name: Check datafusion (default features)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
-        run: cargo xtask ci step check datafusion default
       - name: Check datafusion (no-default-features)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion no-default
       - name: Check datafusion (nested_expressions)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion nested_expressions
       - name: Check datafusion (array_expressions)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion array_expressions
       - name: Check datafusion (avro)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion avro
       - name: Check datafusion (backtrace)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion backtrace
       - name: Check datafusion (compression)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion compression
       - name: Check datafusion (crypto_expressions)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion crypto_expressions
       - name: Check datafusion (datetime_expressions)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion datetime_expressions
       - name: Check datafusion (encoding_expressions)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion encoding_expressions
       - name: Check datafusion (force_hash_collisions)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion force_hash_collisions
       - name: Check datafusion (math_expressions)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion math_expressions
       - name: Check datafusion (parquet)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion parquet
       - name: Check datafusion (regex_expressions)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion regex_expressions
       - name: Check datafusion (recursive_protection)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion recursive_protection
       - name: Check datafusion (serde)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion serde
       - name: Check datafusion (sql)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion sql
       - name: Check datafusion (string_expressions)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion string_expressions
       - name: Check datafusion (unicode_expressions)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion unicode_expressions
       - name: Check parquet encryption (parquet_encryption)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion parquet_encryption
-      - name: Record compiler cache statistics
-        if: always() && inputs.phase == 'restore'
-        run: sccache --show-stats --stats-format=json > "$RUNNER_TEMP/boringcache-validation/sccache.json"
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -512,7 +401,7 @@ jobs:
           name: datafusion-${{ inputs.phase }}
           path: |
             ${{ runner.temp }}/boringcache-validation
-            ${{ steps.compiler-cache.outputs.evidence-path }}
+            ${{ steps.cargo-cache.outputs.evidence-path }}
           if-no-files-found: error
           retention-days: 30
 
@@ -540,67 +429,42 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/boringcache-validation"
           source_commit=$(cat .github/boringcache-source)
-          git diff --exit-code "$source_commit" -- . ':!.boringcache.toml' ':!.github/boringcache-source' ':!.github/boringcache-validation.md' ':!.github/workflows/boringcache-connect.yml' ':!.github/workflows/boringcache-validation.yml'
+          git diff --exit-code "$source_commit" -- . ':!.boringcache.toml' ':!.github/boringcache-plans/**' ':!.github/boringcache-source' ':!.github/boringcache-validation.md' ':!.github/workflows/boringcache-connect.yml' ':!.github/workflows/boringcache-validation.yml'
           git rev-parse HEAD > "$RUNNER_TEMP/boringcache-validation/workflow-commit.txt"
           cp .github/boringcache-source "$RUNNER_TEMP/boringcache-validation/upstream-commit.txt"
-          cp .boringcache.toml "$RUNNER_TEMP/boringcache-validation/cache-plan.toml"
+          cp .github/boringcache-plans/datafusion-functions/.boringcache.toml "$RUNNER_TEMP/boringcache-validation/cache-plan.toml"
           rustc -Vv > "$RUNNER_TEMP/boringcache-validation/rustc.txt"
           cargo -V > "$RUNNER_TEMP/boringcache-validation/cargo.txt"
           sha256sum Cargo.lock > "$RUNNER_TEMP/boringcache-validation/cargo-lock.sha256"
-      - name: Install sccache
-        if: inputs.phase == 'restore'
-        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
-        with:
-          version: v0.17.0
-          disable_annotations: true
-      - name: Configure shared compiler cache
-        id: compiler-cache
+      - name: Check datafusion-functions (default features)
+        if: inputs.phase == 'baseline'
+        run: cargo xtask ci step check datafusion-functions default
+      - name: Restore Cargo state and check datafusion-functions (default features)
+        id: cargo-cache
         if: inputs.phase == 'restore'
         uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
         with:
-          mode: sccache
+          mode: cargo
+          working-directory: .github/boringcache-plans/datafusion-functions
           trust-policy: restore
           diagnostics: summary
           fail-on-cache-error: true
-      - name: Check datafusion-functions (default features)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
-        run: cargo xtask ci step check datafusion-functions default
       - name: Check datafusion-functions (no-default-features)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion-functions no-default
       - name: Check datafusion-functions (crypto_expressions)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion-functions crypto_expressions
       - name: Check datafusion-functions (datetime_expressions)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion-functions datetime_expressions
       - name: Check datafusion-functions (encoding_expressions)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion-functions encoding_expressions
       - name: Check datafusion-functions (math_expressions)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion-functions math_expressions
       - name: Check datafusion-functions (regex_expressions)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion-functions regex_expressions
       - name: Check datafusion-functions (string_expressions)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion-functions string_expressions
       - name: Check datafusion-functions (unicode_expressions)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo xtask ci step check datafusion-functions unicode_expressions
-      - name: Record compiler cache statistics
-        if: always() && inputs.phase == 'restore'
-        run: sccache --show-stats --stats-format=json > "$RUNNER_TEMP/boringcache-validation/sccache.json"
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -608,7 +472,7 @@ jobs:
           name: datafusion-functions-${{ inputs.phase }}
           path: |
             ${{ runner.temp }}/boringcache-validation
-            ${{ steps.compiler-cache.outputs.evidence-path }}
+            ${{ steps.cargo-cache.outputs.evidence-path }}
           if-no-files-found: error
           retention-days: 30
 
@@ -636,43 +500,30 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/boringcache-validation"
           source_commit=$(cat .github/boringcache-source)
-          git diff --exit-code "$source_commit" -- . ':!.boringcache.toml' ':!.github/boringcache-source' ':!.github/boringcache-validation.md' ':!.github/workflows/boringcache-connect.yml' ':!.github/workflows/boringcache-validation.yml'
+          git diff --exit-code "$source_commit" -- . ':!.boringcache.toml' ':!.github/boringcache-plans/**' ':!.github/boringcache-source' ':!.github/boringcache-validation.md' ':!.github/workflows/boringcache-connect.yml' ':!.github/workflows/boringcache-validation.yml'
           git rev-parse HEAD > "$RUNNER_TEMP/boringcache-validation/workflow-commit.txt"
           cp .github/boringcache-source "$RUNNER_TEMP/boringcache-validation/upstream-commit.txt"
-          cp .boringcache.toml "$RUNNER_TEMP/boringcache-validation/cache-plan.toml"
+          cp .github/boringcache-plans/datafusion-spark/.boringcache.toml "$RUNNER_TEMP/boringcache-validation/cache-plan.toml"
           rustc -Vv > "$RUNNER_TEMP/boringcache-validation/rustc.txt"
           cargo -V > "$RUNNER_TEMP/boringcache-validation/cargo.txt"
           sha256sum Cargo.lock > "$RUNNER_TEMP/boringcache-validation/cargo-lock.sha256"
-      - name: Install sccache
-        if: inputs.phase == 'restore'
-        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
-        with:
-          version: v0.17.0
-          disable_annotations: true
-      - name: Configure shared compiler cache
-        id: compiler-cache
+      - name: Check datafusion-spark (default features)
+        if: inputs.phase == 'baseline'
+        run: cargo check --profile ci --all-targets -p datafusion-spark
+      - name: Restore Cargo state and check datafusion-spark (default features)
+        id: cargo-cache
         if: inputs.phase == 'restore'
         uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
         with:
-          mode: sccache
+          mode: cargo
+          working-directory: .github/boringcache-plans/datafusion-spark
           trust-policy: restore
           diagnostics: summary
           fail-on-cache-error: true
-      - name: Check datafusion-spark (default features)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
-        run: cargo check --profile ci --all-targets -p datafusion-spark
       - name: Check datafusion-spark (no-default-features)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo check --profile ci --no-default-features -p datafusion-spark
       - name: Check datafusion-spark (core)
-        env:
-          RUSTFLAGS: -C debuginfo=line-tables-only
         run: cargo check --profile ci --no-default-features -p datafusion-spark --features=core
-      - name: Record compiler cache statistics
-        if: always() && inputs.phase == 'restore'
-        run: sccache --show-stats --stats-format=json > "$RUNNER_TEMP/boringcache-validation/sccache.json"
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -680,6 +531,6 @@ jobs:
           name: datafusion-spark-${{ inputs.phase }}
           path: |
             ${{ runner.temp }}/boringcache-validation
-            ${{ steps.compiler-cache.outputs.evidence-path }}
+            ${{ steps.cargo-cache.outputs.evidence-path }}
           if-no-files-found: error
           retention-days: 30
