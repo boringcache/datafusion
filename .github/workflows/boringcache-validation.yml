@@ -113,22 +113,12 @@ jobs:
         with:
           version: v0.17.0
           disable_annotations: true
-      - name: Restore shared Cargo state
+      - name: Restore shared Cargo and compiler state
         id: cargo-cache
         if: inputs.phase == 'restore'
         uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
         with:
-          mode: archive
-          cache-profiles: cargo
-          trust-policy: restore
-          diagnostics: summary
-          fail-on-cache-error: true
-      - name: Configure shared compiler cache
-        id: compiler-cache
-        if: inputs.phase == 'restore'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
-        with:
-          mode: sccache
+          mode: cargo
           trust-policy: restore
           diagnostics: summary
           fail-on-cache-error: true
@@ -147,7 +137,6 @@ jobs:
           path: |
             ${{ runner.temp }}/boringcache-validation
             ${{ steps.cargo-cache.outputs.evidence-path }}
-            ${{ steps.compiler-cache.outputs.evidence-path }}
           if-no-files-found: error
           retention-days: 30
 
@@ -188,22 +177,12 @@ jobs:
         with:
           version: v0.17.0
           disable_annotations: true
-      - name: Restore shared Cargo state
+      - name: Restore shared Cargo and compiler state
         id: cargo-cache
         if: inputs.phase == 'restore'
         uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
         with:
-          mode: archive
-          cache-profiles: cargo
-          trust-policy: restore
-          diagnostics: summary
-          fail-on-cache-error: true
-      - name: Configure shared compiler cache
-        id: compiler-cache
-        if: inputs.phase == 'restore'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
-        with:
-          mode: sccache
+          mode: cargo
           trust-policy: restore
           diagnostics: summary
           fail-on-cache-error: true
@@ -228,7 +207,6 @@ jobs:
           path: |
             ${{ runner.temp }}/boringcache-validation
             ${{ steps.cargo-cache.outputs.evidence-path }}
-            ${{ steps.compiler-cache.outputs.evidence-path }}
           if-no-files-found: error
           retention-days: 30
 
@@ -270,22 +248,12 @@ jobs:
         with:
           version: v0.17.0
           disable_annotations: true
-      - name: Restore shared Cargo state
+      - name: Restore shared Cargo and compiler state
         id: cargo-cache
         if: inputs.phase == 'restore'
         uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
         with:
-          mode: archive
-          cache-profiles: cargo
-          trust-policy: restore
-          diagnostics: summary
-          fail-on-cache-error: true
-      - name: Configure shared compiler cache
-        id: compiler-cache
-        if: inputs.phase == 'restore'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
-        with:
-          mode: sccache
+          mode: cargo
           trust-policy: restore
           diagnostics: summary
           fail-on-cache-error: true
@@ -310,7 +278,6 @@ jobs:
           path: |
             ${{ runner.temp }}/boringcache-validation
             ${{ steps.cargo-cache.outputs.evidence-path }}
-            ${{ steps.compiler-cache.outputs.evidence-path }}
           if-no-files-found: error
           retention-days: 30
 
@@ -352,22 +319,12 @@ jobs:
         with:
           version: v0.17.0
           disable_annotations: true
-      - name: Restore shared Cargo state
+      - name: Restore shared Cargo and compiler state
         id: cargo-cache
         if: inputs.phase == 'restore'
         uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
         with:
-          mode: archive
-          cache-profiles: cargo
-          trust-policy: restore
-          diagnostics: summary
-          fail-on-cache-error: true
-      - name: Configure shared compiler cache
-        id: compiler-cache
-        if: inputs.phase == 'restore'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
-        with:
-          mode: sccache
+          mode: cargo
           trust-policy: restore
           diagnostics: summary
           fail-on-cache-error: true
@@ -384,7 +341,6 @@ jobs:
           path: |
             ${{ runner.temp }}/boringcache-validation
             ${{ steps.cargo-cache.outputs.evidence-path }}
-            ${{ steps.compiler-cache.outputs.evidence-path }}
           if-no-files-found: error
           retention-days: 30
 
@@ -426,22 +382,12 @@ jobs:
         with:
           version: v0.17.0
           disable_annotations: true
-      - name: Restore shared Cargo state
+      - name: Restore shared Cargo and compiler state
         id: cargo-cache
         if: inputs.phase == 'restore'
         uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
         with:
-          mode: archive
-          cache-profiles: cargo
-          trust-policy: restore
-          diagnostics: summary
-          fail-on-cache-error: true
-      - name: Configure shared compiler cache
-        id: compiler-cache
-        if: inputs.phase == 'restore'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
-        with:
-          mode: sccache
+          mode: cargo
           trust-policy: restore
           diagnostics: summary
           fail-on-cache-error: true
@@ -496,7 +442,6 @@ jobs:
           path: |
             ${{ runner.temp }}/boringcache-validation
             ${{ steps.cargo-cache.outputs.evidence-path }}
-            ${{ steps.compiler-cache.outputs.evidence-path }}
           if-no-files-found: error
           retention-days: 30
 
@@ -537,22 +482,12 @@ jobs:
         with:
           version: v0.17.0
           disable_annotations: true
-      - name: Restore shared Cargo state
+      - name: Restore shared Cargo and compiler state
         id: cargo-cache
         if: inputs.phase == 'restore'
         uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
         with:
-          mode: archive
-          cache-profiles: cargo
-          trust-policy: restore
-          diagnostics: summary
-          fail-on-cache-error: true
-      - name: Configure shared compiler cache
-        id: compiler-cache
-        if: inputs.phase == 'restore'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
-        with:
-          mode: sccache
+          mode: cargo
           trust-policy: restore
           diagnostics: summary
           fail-on-cache-error: true
@@ -585,7 +520,6 @@ jobs:
           path: |
             ${{ runner.temp }}/boringcache-validation
             ${{ steps.cargo-cache.outputs.evidence-path }}
-            ${{ steps.compiler-cache.outputs.evidence-path }}
           if-no-files-found: error
           retention-days: 30
 
@@ -626,22 +560,12 @@ jobs:
         with:
           version: v0.17.0
           disable_annotations: true
-      - name: Restore shared Cargo state
+      - name: Restore shared Cargo and compiler state
         id: cargo-cache
         if: inputs.phase == 'restore'
         uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
         with:
-          mode: archive
-          cache-profiles: cargo
-          trust-policy: restore
-          diagnostics: summary
-          fail-on-cache-error: true
-      - name: Configure shared compiler cache
-        id: compiler-cache
-        if: inputs.phase == 'restore'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
-        with:
-          mode: sccache
+          mode: cargo
           trust-policy: restore
           diagnostics: summary
           fail-on-cache-error: true
@@ -662,6 +586,5 @@ jobs:
           path: |
             ${{ runner.temp }}/boringcache-validation
             ${{ steps.cargo-cache.outputs.evidence-path }}
-            ${{ steps.compiler-cache.outputs.evidence-path }}
           if-no-files-found: error
           retention-days: 30
