@@ -1,33 +1,33 @@
 workspace = "boringcache/datafusion"
 
 [proxy]
-metadata-hints = ["project=datafusion", "experiment=issue-25148"]
+metadata-hints = ["project=datafusion", "experiment=issue-25148-full-rust-workflow"]
 
 [entries.cargo-registry-cache]
-tag = "datafusion-issue-25148-cargo-v2-registry-cache"
+tag = "datafusion-issue-25148-full-v1-registry-cache"
 
 [entries.cargo-registry-index]
-tag = "datafusion-issue-25148-cargo-v2-registry-index"
+tag = "datafusion-issue-25148-full-v1-registry-index"
 
 [entries.cargo-git-db]
-tag = "datafusion-issue-25148-cargo-v2-git-db"
+tag = "datafusion-issue-25148-full-v1-git-db"
 
 [entries.cargo-target]
 kind = "cargo-target"
-tag = "datafusion-issue-25148-cargo-v4-target"
+tag = "datafusion-issue-25148-full-v1-workspace-check"
 
 [profiles.cargo]
 entries = ["cargo-registry-cache", "cargo-registry-index", "cargo-git-db", "cargo-target"]
 
 [adapters.cargo]
-tag = "datafusion-issue-25148-cargo-v2"
+tag = "datafusion-issue-25148-full-v1"
 no-platform = false
 no-git = false
-read-only = false
+read-only = true
 fail-on-cache-error = true
 profiles = ["cargo"]
 skip-restore = false
-skip-save = false
+skip-save = true
 save-on-failure = false
 mount-cache = false
 compiler-cache = "none"

@@ -50,11 +50,25 @@ on:
   # manual trigger
   # https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
   workflow_dispatch:
+    inputs:
+      cache_provider:
+        description: Cache provider for the complete Rust workflow
+        type: choice
+        options:
+          - github
+          - boringcache
+        default: github
+      cli_version:
+        description: Optional exact BoringCache CLI release or prerelease tag
+        required: false
+        default: ""
+        type: string
   merge_group:
 
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   # Check crate compiles and base cargo check passes
@@ -71,14 +85,27 @@ jobs:
         with:
           rust-version: stable
       - name: Rust Dependency Cache
+        if: inputs.cache_provider != 'boringcache'
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2.9.2
         with:
           shared-key: "amd-ci-check" # Keep cargo check artifacts separate from test builds.
-          save-if: ${{ github.ref_name == 'main' }}
+          save-if: ${{ github.ref_name == 'main' || (github.ref_name == 'boringcache-validation' && inputs.cache_provider != 'boringcache') }}
       - name: Prepare cargo build
+        if: inputs.cache_provider != 'boringcache'
         # `--locked` asserts that Cargo.lock is up to date with the manifest.
         run: cargo xtask ci step check workspace
+      - name: Prepare cargo build with BoringCache
+        id: boringcache
+        if: inputs.cache_provider == 'boringcache' && github.repository == 'boringcache/datafusion' && github.ref == 'refs/heads/boringcache-validation'
+        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          mode: cargo
+          trust-policy: publish
+          diagnostics: summary
+          fail-on-cache-error: true
       - name: Archive Cargo check artifacts
+        if: inputs.cache_provider != 'boringcache'
         id: archive-check
         continue-on-error: true
         shell: bash
@@ -91,7 +118,7 @@ jobs:
             --exclude='registry/src/*/*/false' \
             -cf "$RUNNER_TEMP/cargo-check/check-registry.tar" -C "$CARGO_HOME" registry
       - name: Upload Cargo check artifacts
-        if: steps.archive-check.outcome == 'success'
+        if: inputs.cache_provider != 'boringcache' && steps.archive-check.outcome == 'success'
         continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
@@ -119,12 +146,25 @@ jobs:
         with:
           rust-version: stable
       - name: Rust Dependency Cache
+        if: inputs.cache_provider != 'boringcache'
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2.9.2
         with:
           save-if: false # The workspace and functions checks save this cache on main.
           shared-key: "amd-ci-check"
       - name: Check datafusion-common (default features)
+        if: inputs.cache_provider != 'boringcache'
         run: cargo xtask ci step check datafusion-common default
+      - name: Check datafusion-common (default features) with BoringCache
+        id: boringcache
+        if: inputs.cache_provider == 'boringcache'
+        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          mode: cargo
+          working-directory: .github/boringcache-plans/datafusion-common
+          trust-policy: restore
+          diagnostics: summary
+          fail-on-cache-error: true
       #
       # Note: Only check libraries (not --all-targets) to cover end user APIs
       #
@@ -151,6 +191,7 @@ jobs:
         with:
           rust-version: stable
       - name: Download Cargo check artifacts
+        if: inputs.cache_provider != 'boringcache'
         id: download-check
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
@@ -158,12 +199,24 @@ jobs:
           name: cargo-check
           path: ${{ runner.temp }}/cargo-check
       - name: Restore Cargo check artifacts
-        if: steps.download-check.outcome == 'success'
+        if: inputs.cache_provider != 'boringcache' && steps.download-check.outcome == 'success'
         run: |
           tar -xf "$RUNNER_TEMP/cargo-check/check-workspace.tar"
           tar -xf "$RUNNER_TEMP/cargo-check/check-registry.tar" -C "$CARGO_HOME"
       - name: Check datafusion-substrait (default features)
+        if: inputs.cache_provider != 'boringcache'
         run: cargo xtask ci step check datafusion-substrait default
+      - name: Check datafusion-substrait (default features) with BoringCache
+        id: boringcache
+        if: inputs.cache_provider == 'boringcache'
+        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          mode: cargo
+          working-directory: .github/boringcache-plans/datafusion-substrait
+          trust-policy: restore
+          diagnostics: summary
+          fail-on-cache-error: true
         #
         # Note: Only check libraries (not --all-targets) to cover end user APIs
         #
@@ -196,12 +249,25 @@ jobs:
         with:
           rust-version: stable
       - name: Rust Dependency Cache
+        if: inputs.cache_provider != 'boringcache'
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2.9.2
         with:
           save-if: false # The workspace and functions checks save this cache on main.
           shared-key: "amd-ci-check"
       - name: Check datafusion-proto (default features)
+        if: inputs.cache_provider != 'boringcache'
         run: cargo xtask ci step check datafusion-proto default
+      - name: Check datafusion-proto (default features) with BoringCache
+        id: boringcache
+        if: inputs.cache_provider == 'boringcache'
+        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          mode: cargo
+          working-directory: .github/boringcache-plans/datafusion-proto
+          trust-policy: restore
+          diagnostics: summary
+          fail-on-cache-error: true
       #
       # Note: Only check libraries (not --all-targets) to cover end user APIs
       #
@@ -232,12 +298,25 @@ jobs:
         with:
           rust-version: stable
       - name: Rust Dependency Cache
+        if: inputs.cache_provider != 'boringcache'
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2.9.2
         with:
           save-if: false # The workspace and functions checks save this cache on main.
           shared-key: "amd-ci-check"
       - name: Check datafusion-ffi (no-default-features)
+        if: inputs.cache_provider != 'boringcache'
         run: cargo xtask ci step check datafusion-ffi no-default
+      - name: Check datafusion-ffi (no-default-features) with BoringCache
+        id: boringcache
+        if: inputs.cache_provider == 'boringcache'
+        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          mode: cargo
+          working-directory: .github/boringcache-plans/datafusion-ffi
+          trust-policy: restore
+          diagnostics: summary
+          fail-on-cache-error: true
 
 
   # Check datafusion crate features
@@ -260,6 +339,7 @@ jobs:
         with:
           rust-version: stable
       - name: Download Cargo check artifacts
+        if: inputs.cache_provider != 'boringcache'
         id: download-check
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
@@ -267,12 +347,24 @@ jobs:
           name: cargo-check
           path: ${{ runner.temp }}/cargo-check
       - name: Restore Cargo check artifacts
-        if: steps.download-check.outcome == 'success'
+        if: inputs.cache_provider != 'boringcache' && steps.download-check.outcome == 'success'
         run: |
           tar -xf "$RUNNER_TEMP/cargo-check/check-workspace.tar"
           tar -xf "$RUNNER_TEMP/cargo-check/check-registry.tar" -C "$CARGO_HOME"
       - name: Check datafusion (default features)
+        if: inputs.cache_provider != 'boringcache'
         run: cargo xtask ci step check datafusion default
+      - name: Check datafusion (default features) with BoringCache
+        id: boringcache
+        if: inputs.cache_provider == 'boringcache'
+        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          mode: cargo
+          working-directory: .github/boringcache-plans/datafusion
+          trust-policy: restore
+          diagnostics: summary
+          fail-on-cache-error: true
       #
       # Note: Only check libraries (not --all-targets) to cover end user APIs
       #
@@ -332,13 +424,26 @@ jobs:
         with:
           rust-version: stable
       - name: Rust Dependency Cache
+        if: inputs.cache_provider != 'boringcache'
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2.9.2
         with:
           # Warm GitHub's cache when linux-build-lib saves to Runs-On.
-          save-if: ${{ github.ref_name == 'main' }}
+          save-if: ${{ github.ref_name == 'main' || (github.ref_name == 'boringcache-validation' && inputs.cache_provider != 'boringcache') }}
           shared-key: "amd-ci-check"
       - name: Check datafusion-functions (default features)
+        if: inputs.cache_provider != 'boringcache'
         run: cargo xtask ci step check datafusion-functions default
+      - name: Check datafusion-functions (default features) with BoringCache
+        id: boringcache
+        if: inputs.cache_provider == 'boringcache'
+        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          mode: cargo
+          working-directory: .github/boringcache-plans/datafusion-functions
+          trust-policy: restore
+          diagnostics: summary
+          fail-on-cache-error: true
       #
       # Note: Only check libraries (not --all-targets) to cover end user APIs
       #
@@ -377,12 +482,25 @@ jobs:
         with:
           rust-version: stable
       - name: Rust Dependency Cache
+        if: inputs.cache_provider != 'boringcache'
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2.9.2
         with:
           save-if: false # The workspace and functions checks save this cache on main.
           shared-key: "amd-ci-check"
       - name: Check datafusion-spark (default features)
+        if: inputs.cache_provider != 'boringcache'
         run: cargo check --profile ci --all-targets -p datafusion-spark
+      - name: Check datafusion-spark (default features) with BoringCache
+        id: boringcache
+        if: inputs.cache_provider == 'boringcache'
+        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          mode: cargo
+          working-directory: .github/boringcache-plans/datafusion-spark
+          trust-policy: restore
+          diagnostics: summary
+          fail-on-cache-error: true
       #
       # Note: Only check libraries (not --all-targets) to cover end user APIs
       #
@@ -417,14 +535,29 @@ jobs:
         with:
           tool: cargo-llvm-cov
       - name: Rust Dependency Cache
+        if: inputs.cache_provider != 'boringcache'
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2.9.2
         with:
-          save-if: ${{ github.ref_name == 'main' }}
+          save-if: ${{ github.ref_name == 'main' || (github.ref_name == 'boringcache-validation' && inputs.cache_provider != 'boringcache') }}
           shared-key: "amd-ci"
       - name: Run tests (excluding doctests and datafusion-cli)
+        if: inputs.cache_provider != 'boringcache'
         env:
           RUST_BACKTRACE: 1
         run: cargo xtask ci step test workspace
+      - name: Run tests (excluding doctests and datafusion-cli) with BoringCache
+        id: boringcache
+        if: inputs.cache_provider == 'boringcache'
+        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          mode: cargo
+          working-directory: .github/boringcache-plans/linux-test
+          trust-policy: restore
+          diagnostics: summary
+          fail-on-cache-error: true
+        env:
+          RUST_BACKTRACE: 1
       - parallel:
           - name: Verify Working Directory Clean
             run: git diff --exit-code
@@ -458,6 +591,7 @@ jobs:
       - name: Setup Rust toolchain
         run: rustup toolchain install stable
       - name: Rust Dependency Cache
+        if: inputs.cache_provider != 'boringcache'
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2.9.2
         with:
           save-if: false # set in linux-test
@@ -479,6 +613,7 @@ jobs:
           ci/scripts/retry timeout 120 docker pull "$MINIO_IMAGE" \
             || echo "::warning::Could not pre-pull $MINIO_IMAGE, the tests will pull it themselves"
       - name: Run tests (excluding doctests)
+        if: inputs.cache_provider != 'boringcache'
         env:
           RUST_BACKTRACE: 1
           AWS_ENDPOINT: http://127.0.0.1:9000
@@ -487,6 +622,24 @@ jobs:
           TEST_STORAGE_INTEGRATION: 1
           AWS_ALLOW_HTTP: true
         run: cargo xtask ci step test cli
+      - name: Run tests (excluding doctests) with BoringCache
+        id: boringcache
+        if: inputs.cache_provider == 'boringcache'
+        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          mode: cargo
+          working-directory: .github/boringcache-plans/linux-test-cli
+          trust-policy: restore
+          diagnostics: summary
+          fail-on-cache-error: true
+        env:
+          RUST_BACKTRACE: 1
+          AWS_ENDPOINT: http://127.0.0.1:9000
+          AWS_ACCESS_KEY_ID: TEST-DataFusionLogin
+          AWS_SECRET_ACCESS_KEY: TEST-DataFusionPassword
+          TEST_STORAGE_INTEGRATION: 1
+          AWS_ALLOW_HTTP: true
       - name: Verify Working Directory Clean
         run: git diff --exit-code
 
@@ -508,16 +661,32 @@ jobs:
         with:
           rust-version: stable
       - name: Rust Dependency Cache
+        if: inputs.cache_provider != 'boringcache'
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2.9.2
         with:
-          save-if: ${{ github.ref_name == 'main' }}
+          save-if: ${{ github.ref_name == 'main' || (github.ref_name == 'boringcache-validation' && inputs.cache_provider != 'boringcache') }}
           shared-key: "amd-ci-linux-test-example"
       - name: Run examples
+        if: inputs.cache_provider != 'boringcache'
         run: |
           # test datafusion-sql examples
           cargo run --profile ci --example sql
           # test datafusion-examples
           ci/scripts/rust_example.sh
+      - name: Run examples with BoringCache
+        id: boringcache
+        if: inputs.cache_provider == 'boringcache'
+        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          mode: cargo
+          working-directory: .github/boringcache-plans/linux-test-example
+          trust-policy: restore
+          diagnostics: summary
+          fail-on-cache-error: true
+      - name: Run datafusion-examples with BoringCache restore
+        if: inputs.cache_provider == 'boringcache'
+        run: ci/scripts/rust_example.sh
       - name: Verify Working Directory Clean
         run: git diff --exit-code
 
@@ -539,7 +708,19 @@ jobs:
         with:
           rust-version: stable
       - name: Run doctests
+        if: inputs.cache_provider != 'boringcache'
         run: cargo xtask ci step test doctest
+      - name: Run doctests with BoringCache
+        id: boringcache
+        if: inputs.cache_provider == 'boringcache'
+        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          mode: cargo
+          working-directory: .github/boringcache-plans/linux-test-doc
+          trust-policy: restore
+          diagnostics: summary
+          fail-on-cache-error: true
       - name: Verify Working Directory Clean
         run: git diff --exit-code
 
@@ -558,7 +739,21 @@ jobs:
         with:
           rust-version: stable
       - name: Run cargo doc
+        if: inputs.cache_provider != 'boringcache'
         run: ci/scripts/rust_docs.sh
+      - name: Run cargo doc with BoringCache
+        id: boringcache
+        if: inputs.cache_provider == 'boringcache'
+        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          mode: cargo
+          working-directory: .github/boringcache-plans/linux-rustdoc
+          trust-policy: restore
+          diagnostics: summary
+          fail-on-cache-error: true
+        env:
+          RUSTDOCFLAGS: -D warnings
 
   linux-wasm-pack:
     name: build and run with wasm-pack
@@ -612,9 +807,24 @@ jobs:
               ./dbgen -f -s 0.1
               mv *.tbl ../datafusion/sqllogictest/test_files/tpch/data
       - name: Verify that benchmark queries return expected results
+        if: inputs.cache_provider != 'boringcache'
         run: |
           cargo xtask ci step test benchmark-plan
           cargo xtask ci step test benchmark-sqllogic
+      - name: Verify that benchmark queries return expected results with BoringCache
+        id: boringcache
+        if: inputs.cache_provider == 'boringcache'
+        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          mode: cargo
+          working-directory: .github/boringcache-plans/benchmark-results
+          trust-policy: restore
+          diagnostics: summary
+          fail-on-cache-error: true
+      - name: Verify benchmark sqllogic results with BoringCache restore
+        if: inputs.cache_provider == 'boringcache'
+        run: cargo xtask ci step test benchmark-sqllogic
       - name: Verify Working Directory Clean
         run: git diff --exit-code
 
@@ -649,11 +859,26 @@ jobs:
         with:
           rust-version: stable
       - name: Run sqllogictest
+        if: inputs.cache_provider != 'boringcache'
         run: cargo xtask ci step test postgres
         env:
           # use postgres for the host here because we have specified a container for the job
           POSTGRES_HOST: postgres
-          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+          POSTGRES_PORT: ${{ job.services.postgres.ports['5432'] }}
+      - name: Run sqllogictest with BoringCache
+        id: boringcache
+        if: inputs.cache_provider == 'boringcache'
+        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          mode: cargo
+          working-directory: .github/boringcache-plans/sqllogictest-postgres
+          trust-policy: restore
+          diagnostics: summary
+          fail-on-cache-error: true
+        env:
+          POSTGRES_HOST: postgres
+          POSTGRES_PORT: ${{ job.services.postgres.ports['5432'] }}
 
   sqllogictest-substrait:
     name: "Run sqllogictest in Substrait round-trip mode"
@@ -672,11 +897,23 @@ jobs:
         with:
           rust-version: stable
       - name: Run sqllogictest
+        if: inputs.cache_provider != 'boringcache'
         # TODO: Right now several tests are failing in Substrait round-trip mode, so this
         #  command cannot be run for all the .slt files. Run it for just one that works (limit.slt)
         #  until most of the tickets in https://github.com/apache/datafusion/issues/16248 are addressed
         #  and this command can be run without filters.
         run: cargo xtask ci step test substrait
+      - name: Run sqllogictest with BoringCache
+        id: boringcache
+        if: inputs.cache_provider == 'boringcache'
+        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          mode: cargo
+          working-directory: .github/boringcache-plans/sqllogictest-substrait
+          trust-policy: restore
+          diagnostics: summary
+          fail-on-cache-error: true
 
   #  Temporarily commenting out the Windows flow, the reason is enormously slow running build
   #  Waiting for new Windows 2025 github runner
@@ -777,12 +1014,25 @@ jobs:
           - name: Install Clippy
             run: rustup component add clippy
           - name: Rust Dependency Cache
+            if: inputs.cache_provider != 'boringcache'
             uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2.9.2
             with:
-              save-if: ${{ github.ref_name == 'main' }}
+              save-if: ${{ github.ref_name == 'main' || (github.ref_name == 'boringcache-validation' && inputs.cache_provider != 'boringcache') }}
               shared-key: "amd-ci-clippy"
       - name: Run clippy
+        if: inputs.cache_provider != 'boringcache'
         run: ci/scripts/rust_clippy.sh
+      - name: Run clippy with BoringCache
+        id: boringcache
+        if: inputs.cache_provider == 'boringcache'
+        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          mode: cargo
+          working-directory: .github/boringcache-plans/clippy
+          trust-policy: restore
+          diagnostics: summary
+          fail-on-cache-error: true
 
   cargo-toml-formatting-checks:
     name: check Cargo.toml formatting

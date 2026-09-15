@@ -31,5 +31,5 @@ skip-save = true
 save-on-failure = false
 mount-cache = false
 compiler-cache = "none"
-metadata-hints = ["lane=datafusion-substrait"]
-command = ["cargo", "xtask", "ci", "step", "check", "datafusion-substrait", "default"]
+metadata-hints = ["lane=clippy"]
+command = ["cargo", "clippy", "--all-targets", "--workspace", "--features", "avro,integration-tests,extended_tests", "--", "-D", "warnings"]
