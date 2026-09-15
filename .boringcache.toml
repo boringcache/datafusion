@@ -3,43 +3,6 @@ workspace = "boringcache/datafusion"
 [proxy]
 metadata-hints = ["project=datafusion", "experiment=issue-25148"]
 
-[entries.cargo-target]
-kind = "cargo-target"
-tag = "datafusion-feature-check-target"
-
-[profiles.cargo]
-entries = [
-    "cargo-registry-cache",
-    "cargo-registry-index",
-    "cargo-git-db",
-    "cargo-target",
-]
-
-[profiles.cargo-deps]
-entries = [
-    "cargo-registry-cache",
-    "cargo-registry-index",
-    "cargo-git-db",
-]
-
-[profiles.cargo-target]
-entries = ["cargo-target"]
-
-[adapters.cargo]
-tag = "datafusion-feature-checks"
-no-platform = false
-no-git = false
-read-only = false
-fail-on-cache-error = true
-profiles = ["cargo"]
-skip-restore = false
-skip-save = false
-save-on-failure = false
-mount-cache = false
-compiler-cache = "sccache"
-metadata-hints = ["lane=workspace-seed"]
-command = ["cargo", "xtask", "ci", "step", "check", "workspace"]
-
 [adapters.sccache]
 tag = "datafusion-feature-check-compiler"
 no-platform = false
