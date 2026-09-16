@@ -1,5 +1,11 @@
 # DataFusion BoringCache validation
 
+## Issue-bounded result
+
+| Upstream pain | Exact experiment | Measured result | Bounded verdict |
+| --- | --- | --- | --- |
+| [Issue #25148](https://github.com/apache/datafusion/issues/25148) investigates DataFusion's high GitHub Actions usage and proposes reusing Rust compilation outputs across overlapping feature-check jobs. | Preserve the complete 26-job Rust workflow and compare its existing GitHub cache path with one shared BoringCache workspace-check producer and compatible Linux consumers. Run a cold pair followed by five adjacent real upstream commits on unchanged runners. | All pairs passed, but the five warmed BoringCache runs used 591.2 job minutes versus 565.8 for GitHub: 25.4 more minutes, or 4.5%. Four of six pairs used more BoringCache runner time. | This configuration does not address the issue's goal of reducing total Rust CI minutes. It proves correct cross-job rolling reuse, but restoring roughly 1.1 GB into 15 consumers costs more than the reused producer output saves. |
+
 ## Scope
 
 This validation measures the complete current `.github/workflows/rust.yml`
