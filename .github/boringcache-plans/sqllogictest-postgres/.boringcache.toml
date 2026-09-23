@@ -4,23 +4,23 @@ workspace = "boringcache/datafusion"
 metadata-hints = ["project=datafusion", "experiment=issue-25148-full-rust-workflow"]
 
 [entries.cargo-registry-cache]
-tag = "datafusion-issue-25148-full-v1-registry-cache"
+tag = "datafusion-issue-25148-full-v2-registry-cache"
 
 [entries.cargo-registry-index]
-tag = "datafusion-issue-25148-full-v1-registry-index"
+tag = "datafusion-issue-25148-full-v2-registry-index"
 
 [entries.cargo-git-db]
-tag = "datafusion-issue-25148-full-v1-git-db"
+tag = "datafusion-issue-25148-full-v2-git-db"
 
 [entries.cargo-target]
 kind = "cargo-target"
-tag = "datafusion-issue-25148-full-v1-workspace-check"
+tag = "datafusion-issue-25148-full-v2-workspace-check"
 
 [profiles.cargo]
 entries = ["cargo-registry-cache", "cargo-registry-index", "cargo-git-db", "cargo-target"]
 
 [adapters.cargo]
-tag = "datafusion-issue-25148-full-v1"
+tag = "datafusion-issue-25148-full-v2"
 no-platform = false
 no-git = false
 read-only = true

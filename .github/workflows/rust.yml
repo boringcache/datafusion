@@ -30,6 +30,17 @@
 # It is being rolled out incrementally across all workflows.
 # Track progress at https://github.com/apache/datafusion/issues/24487.
 #
+# # Pushes to `main`
+#
+# Commits reach upstream `main` through the merge queue, which runs this
+# workflow at the same SHA. A push to upstream `main` therefore runs only the
+# jobs that save caches, publish coverage, or run the non-required FFI check.
+# The other jobs carry an `if:` that skips them for that event alone. PRs, the
+# merge queue, `workflow_dispatch`, and every other branch run all jobs. A
+# direct push that bypasses the queue is not re-checked; dispatch the workflow
+# on `main` for a full run. `ci/scripts/check_asf_yaml_status_checks.py` keeps
+# the skipped set explicit.
+#
 name: Rust
 
 concurrency:
@@ -97,7 +108,7 @@ jobs:
       - name: Prepare cargo build with BoringCache
         id: boringcache
         if: inputs.cache_provider == 'boringcache' && github.repository == 'boringcache/datafusion' && github.ref == 'refs/heads/boringcache-validation'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1.32.0
         with:
           cli-version: ${{ inputs.cli_version }}
           mode: cargo
@@ -136,6 +147,7 @@ jobs:
   linux-datafusion-common-features:
     name: cargo check datafusion-common features
     needs: linux-build-lib
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'apache/datafusion') }}
     runs-on: ubuntu-latest
     container:
       image: amd64/rust
@@ -157,7 +169,7 @@ jobs:
       - name: Check datafusion-common (default features) with BoringCache
         id: boringcache
         if: inputs.cache_provider == 'boringcache'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1.32.0
         with:
           cli-version: ${{ inputs.cli_version }}
           mode: cargo
@@ -209,7 +221,7 @@ jobs:
       - name: Check datafusion-substrait (default features) with BoringCache
         id: boringcache
         if: inputs.cache_provider == 'boringcache'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1.32.0
         with:
           cli-version: ${{ inputs.cli_version }}
           mode: cargo
@@ -238,6 +250,7 @@ jobs:
   linux-datafusion-proto-features:
     name: cargo check datafusion-proto features
     needs: linux-build-lib
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'apache/datafusion') }}
     runs-on: ${{ vars.USE_RUNS_ON == 'true' && format('runs-on={0},family=m8a+m7a+c8a,cpu=16,image=ubuntu24-full-x64,extras=s3-cache,disk=large,tag=datafusion', github.run_id) || 'ubuntu-latest' }}
     container:
       image: amd64/rust
@@ -260,7 +273,7 @@ jobs:
       - name: Check datafusion-proto (default features) with BoringCache
         id: boringcache
         if: inputs.cache_provider == 'boringcache'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1.32.0
         with:
           cli-version: ${{ inputs.cli_version }}
           mode: cargo
@@ -309,7 +322,7 @@ jobs:
       - name: Check datafusion-ffi (no-default-features) with BoringCache
         id: boringcache
         if: inputs.cache_provider == 'boringcache'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1.32.0
         with:
           cli-version: ${{ inputs.cli_version }}
           mode: cargo
@@ -357,7 +370,7 @@ jobs:
       - name: Check datafusion (default features) with BoringCache
         id: boringcache
         if: inputs.cache_provider == 'boringcache'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1.32.0
         with:
           cli-version: ${{ inputs.cli_version }}
           mode: cargo
@@ -436,7 +449,7 @@ jobs:
       - name: Check datafusion-functions (default features) with BoringCache
         id: boringcache
         if: inputs.cache_provider == 'boringcache'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1.32.0
         with:
           cli-version: ${{ inputs.cli_version }}
           mode: cargo
@@ -472,6 +485,7 @@ jobs:
   linux-cargo-check-datafusion-spark:
     name: cargo check datafusion-spark features
     needs: linux-build-lib
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'apache/datafusion') }}
     runs-on: ubuntu-latest
     container:
       image: amd64/rust
@@ -493,7 +507,7 @@ jobs:
       - name: Check datafusion-spark (default features) with BoringCache
         id: boringcache
         if: inputs.cache_provider == 'boringcache'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1.32.0
         with:
           cli-version: ${{ inputs.cli_version }}
           mode: cargo
@@ -531,7 +545,7 @@ jobs:
       - name: Install llvm-tools-preview
         run: rustup component add llvm-tools-preview
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@7b8d4719ee4aaa279bdf55df38dacb9ebfe12a6c  # v2.87.6
+        uses: taiki-e/install-action@9114bf4d891761788c546334fd37538eae1bf8b3  # v2.87.16
         with:
           tool: cargo-llvm-cov
       - name: Rust Dependency Cache
@@ -548,7 +562,7 @@ jobs:
       - name: Run tests (excluding doctests and datafusion-cli) with BoringCache
         id: boringcache
         if: inputs.cache_provider == 'boringcache'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1.32.0
         with:
           cli-version: ${{ inputs.cli_version }}
           mode: cargo
@@ -571,7 +585,7 @@ jobs:
                 exit 1
               fi
       - name: Upload coverage to codecov.io
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v7.0.0
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5  # v7.1.1
         with:
           files: target/codecov.json
           fail_ci_if_error: false
@@ -581,6 +595,7 @@ jobs:
   linux-test-datafusion-cli:
     name: cargo test datafusion-cli (amd64)
     needs: linux-build-lib
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'apache/datafusion') }}
     runs-on: ${{ vars.USE_RUNS_ON == 'true' && format('runs-on={0},family=m8a+m7a+c8a,cpu=16,image=ubuntu24-full-x64,extras=s3-cache,disk=large,tag=datafusion', github.run_id) || 'ubuntu-latest' }}
     steps:
       - uses: runs-on/action@efac073ea2507ec18797de3a81704201ade11d9d  # v2.3.1
@@ -625,7 +640,7 @@ jobs:
       - name: Run tests (excluding doctests) with BoringCache
         id: boringcache
         if: inputs.cache_provider == 'boringcache'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1.32.0
         with:
           cli-version: ${{ inputs.cli_version }}
           mode: cargo
@@ -676,7 +691,7 @@ jobs:
       - name: Run examples with BoringCache
         id: boringcache
         if: inputs.cache_provider == 'boringcache'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1.32.0
         with:
           cli-version: ${{ inputs.cli_version }}
           mode: cargo
@@ -694,6 +709,7 @@ jobs:
   linux-test-doc:
     name: cargo test doc (amd64)
     needs: linux-build-lib
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'apache/datafusion') }}
     runs-on: ${{ vars.USE_RUNS_ON == 'true' && format('runs-on={0},family=m8a+m7a+c8a,cpu=16,image=ubuntu24-full-x64,extras=s3-cache,disk=large,tag=datafusion', github.run_id) || 'ubuntu-latest' }}
     container:
       image: amd64/rust
@@ -713,7 +729,7 @@ jobs:
       - name: Run doctests with BoringCache
         id: boringcache
         if: inputs.cache_provider == 'boringcache'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1.32.0
         with:
           cli-version: ${{ inputs.cli_version }}
           mode: cargo
@@ -728,6 +744,7 @@ jobs:
   linux-rustdoc:
     name: cargo doc
     needs: linux-build-lib
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'apache/datafusion') }}
     runs-on: ${{ vars.USE_RUNS_ON == 'true' && format('runs-on={0},family=m8a+m7a+c8a,cpu=16,image=ubuntu24-full-x64,extras=s3-cache,disk=large,tag=datafusion', github.run_id) || 'ubuntu-latest' }}
     container:
       image: amd64/rust
@@ -744,7 +761,7 @@ jobs:
       - name: Run cargo doc with BoringCache
         id: boringcache
         if: inputs.cache_provider == 'boringcache'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1.32.0
         with:
           cli-version: ${{ inputs.cli_version }}
           mode: cargo
@@ -757,6 +774,7 @@ jobs:
 
   linux-wasm-pack:
     name: build and run with wasm-pack
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'apache/datafusion') }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -769,7 +787,7 @@ jobs:
               sudo apt-get update -qq
               sudo apt-get install -y -qq clang
           - name: Setup wasm-pack
-            uses: taiki-e/install-action@7b8d4719ee4aaa279bdf55df38dacb9ebfe12a6c  # v2.87.6
+            uses: taiki-e/install-action@9114bf4d891761788c546334fd37538eae1bf8b3  # v2.87.16
             with:
               tool: wasm-pack
       - name: Run tests with headless mode
@@ -784,6 +802,7 @@ jobs:
   verify-benchmark-results:
     name: verify benchmark results (amd64)
     needs: linux-build-lib
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'apache/datafusion') }}
     runs-on: ${{ vars.USE_RUNS_ON == 'true' && format('runs-on={0},family=m8a+m7a+c8a,cpu=16,image=ubuntu24-full-x64,extras=s3-cache,disk=large,tag=datafusion', github.run_id) || 'ubuntu-latest' }}
     container:
       image: amd64/rust
@@ -814,7 +833,7 @@ jobs:
       - name: Verify that benchmark queries return expected results with BoringCache
         id: boringcache
         if: inputs.cache_provider == 'boringcache'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1.32.0
         with:
           cli-version: ${{ inputs.cli_version }}
           mode: cargo
@@ -831,6 +850,7 @@ jobs:
   sqllogictest-postgres:
     name: "Run sqllogictest with Postgres runner"
     needs: linux-build-lib
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'apache/datafusion') }}
     runs-on: ${{ vars.USE_RUNS_ON == 'true' && format('runs-on={0},family=m8a+m7a+c8a,cpu=16,image=ubuntu24-full-x64,extras=s3-cache,disk=large,tag=datafusion', github.run_id) || 'ubuntu-latest' }}
     container:
       image: amd64/rust
@@ -868,7 +888,7 @@ jobs:
       - name: Run sqllogictest with BoringCache
         id: boringcache
         if: inputs.cache_provider == 'boringcache'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1.32.0
         with:
           cli-version: ${{ inputs.cli_version }}
           mode: cargo
@@ -883,6 +903,7 @@ jobs:
   sqllogictest-substrait:
     name: "Run sqllogictest in Substrait round-trip mode"
     needs: linux-build-lib
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'apache/datafusion') }}
     runs-on: ${{ vars.USE_RUNS_ON == 'true' && format('runs-on={0},family=m8a+m7a+c8a,cpu=16,image=ubuntu24-full-x64,extras=s3-cache,disk=large,tag=datafusion', github.run_id) || 'ubuntu-latest' }}
     container:
       image: amd64/rust
@@ -906,7 +927,7 @@ jobs:
       - name: Run sqllogictest with BoringCache
         id: boringcache
         if: inputs.cache_provider == 'boringcache'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1.32.0
         with:
           cli-version: ${{ inputs.cli_version }}
           mode: cargo
@@ -955,6 +976,7 @@ jobs:
 
   vendor:
     name: Verify Vendored Code
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'apache/datafusion') }}
     runs-on: ubuntu-latest
     container:
       image: amd64/rust
@@ -972,6 +994,7 @@ jobs:
 
   check-fmt:
     name: Check cargo fmt
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'apache/datafusion') }}
     runs-on: ubuntu-latest
     container:
       image: amd64/rust
@@ -987,6 +1010,7 @@ jobs:
 
   check-workflow-tool-installs:
     name: Check GitHub Actions install tooling
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'apache/datafusion') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -1025,7 +1049,7 @@ jobs:
       - name: Run clippy with BoringCache
         id: boringcache
         if: inputs.cache_provider == 'boringcache'
-        uses: boringcache/one@1039999c65011be670f5655e0e48ad556188ab12 # v1.30.4
+        uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1.32.0
         with:
           cli-version: ${{ inputs.cli_version }}
           mode: cargo
@@ -1037,6 +1061,7 @@ jobs:
   cargo-toml-formatting-checks:
     name: check Cargo.toml formatting
     needs: linux-build-lib
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'apache/datafusion') }}
     runs-on: ubuntu-latest
     container:
       image: amd64/rust
@@ -1050,7 +1075,7 @@ jobs:
         with:
           rust-version: stable
       - name: Install taplo
-        uses: taiki-e/install-action@7b8d4719ee4aaa279bdf55df38dacb9ebfe12a6c  # v2.87.6
+        uses: taiki-e/install-action@9114bf4d891761788c546334fd37538eae1bf8b3  # v2.87.16
         with:
           tool: taplo-cli@0.9
       # if you encounter an error, try running 'taplo format' to fix the formatting automatically.
@@ -1060,6 +1085,7 @@ jobs:
   config-docs-check:
     name: check configs.md and ***_functions.md is up-to-date
     needs: linux-build-lib
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'apache/datafusion') }}
     runs-on: ${{ vars.USE_RUNS_ON == 'true' && format('runs-on={0},family=m8a+m7a+c8a,cpu=16,image=ubuntu24-full-x64,extras=s3-cache,disk=large,tag=datafusion', github.run_id) || 'ubuntu-latest' }}
     container:
       image: amd64/rust
@@ -1076,15 +1102,9 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: "20"
-      - name: Check if configs.md has been modified
+      - name: Check generated config and function docs
         run: |
-          # If you encounter an error, run './dev/update_config_docs.sh' and commit
-          ./dev/update_config_docs.sh
-          git diff --exit-code
-      - name: Check if any of the ***_functions.md has been modified
-        run: |
-          # If you encounter an error, run './dev/update_function_docs.sh' and commit
-          ./dev/update_function_docs.sh
+          ./ci/scripts/check_generated_docs.sh
           git diff --exit-code
 
 # This job ensures `datafusion-examples/README.md` stays in sync with the source code:
@@ -1095,6 +1115,7 @@ jobs:
   examples-docs-check:
     name: check example README is up-to-date
     needs: linux-build-lib
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'apache/datafusion') }}
     runs-on: ubuntu-latest
     container:
       image: amd64/rust
@@ -1127,6 +1148,7 @@ jobs:
   # - datafusion-cli
   msrv:
     name: Verify MSRV (Min Supported Rust Version)
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'apache/datafusion') }}
     runs-on: ubuntu-latest
     container:
       image: amd64/rust
@@ -1135,7 +1157,7 @@ jobs:
       - name: Setup Rust toolchain
         uses: ./.github/actions/setup-builder
       - name: Install cargo-msrv
-        uses: taiki-e/install-action@7b8d4719ee4aaa279bdf55df38dacb9ebfe12a6c  # v2.87.6
+        uses: taiki-e/install-action@9114bf4d891761788c546334fd37538eae1bf8b3  # v2.87.16
         with:
           tool: cargo-msrv
 
